@@ -8,6 +8,7 @@ import {
 } from "../appwrite.config";
 import { parseStringify } from "../utils";
 import { Appointment } from "@/types/appwrite.types";
+import { revalidatePath } from "next/cache";
 
 export const createAppointment = async (
 	appointment: CreateAppointmentParams
@@ -49,14 +50,14 @@ export const getRecentAppointmentList = async () => {
 		)
 
 		const initialCounts = {
-			scheduleCount: 0,
+			scheduledCount: 0,
 			pendingCount: 0,
 			cancelledCount: 0,
 		}
 
 		const counts = (appointments.documents as Appointment[]).reduce((acc, appointment) => {
 			if (appointment.status === "scheduled") {
-				acc.scheduleCount += 1
+				acc.scheduledCount += 1
 			} else if (appointment.status === "pending") {
 				acc.pendingCount += 1
 			} else if (appointment.status === "cancelled") {
@@ -79,3 +80,26 @@ export const getRecentAppointmentList = async () => {
 		
 	}
 } 
+
+export const updateAppointment = async ({ appointmentId, userId, appointment, type }: UpdateAppointmentParams) => {
+	try {
+		const updatedAppointment = await databases.updateDocument(
+			DATABASE_ID!,
+			APPOINTMENT_COLLECTION_ID!,
+			appointmentId,
+			appointment
+		)
+
+		if (!updatedAppointment) {
+			throw new Error("Appointment not found")
+		}
+
+		//TODO SMS notification
+
+		revalidatePath("/admin")
+		return parseStringify(updateAppointment)
+	} catch (error) {
+		console.log(error);
+		
+	}
+}
